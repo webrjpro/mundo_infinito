@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bloco Aventura: Mundo Infinito</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Press Start 2P', cursive;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* O corpo do "Minigame" */
+        #console-body {
+            background-color: #5c6bc0; /* Cor do console (Azul Indigo) */
+            padding: 20px 20px 30px 20px;
+            border-radius: 20px;
+            box-shadow: 
+                inset 0 5px 10px rgba(255,255,255,0.3),
+                0 15px 30px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* Moldura da tela */
+        #screen-bezel {
+            background-color: #333;
+            padding: 15px;
+            border-radius: 10px 10px 40px 10px;
+            width: 100%;
+            box-sizing: border-box;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+            position: relative;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #87CEEB;
+            border: 4px solid #000;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hud {
+            padding: 10px;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+            font-size: 10px; /* Fonte um pouco menor para caber mais info */
+            display: flex;
+            justify-content: space-between;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+        }
+
+        /* Área dos Controles Físicos */
+        #controls-area {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        /* Botões Estilo Físico */
+        .btn-pad {
+            width: 120px;
+            height: 120px;
+            position: relative;
+        }
+
+        .d-pad-btn {
+            position: absolute;
+            background: #333;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #111;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        
+        .d-pad-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #111;
+        }
+
+        .d-up { top: 0; left: 40px; border-radius: 5px 5px 0 0; }
+        .d-down { bottom: 0; left: 40px; border-radius: 0 0 5px 5px; }
+        .d-left { top: 40px; left: 0; border-radius: 5px 0 0 5px; }
+        .d-right { top: 40px; right: 0; border-radius: 0 5px 5px 0; }
+        .d-center { top: 40px; left: 40px; background: #333; pointer-events: none; z-index: 1; }
+
+        .action-pad {
+            display: flex;
+            gap: 15px;
+            transform: rotate(-15deg);
+        }
+
+        .action-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #e91e63;
+            box-shadow: 0 5px 0 #880e4f;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: rgba(0,0,0,0.3);
+            font-size: 10px;
+            font-weight: bold;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .action-btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 0 0 #880e4f;
+        }
+
+        .btn-b { margin-top: 20px; background: #ffeb3b; box-shadow: 0 5px 0 #f57f17; } /* Amarelo */
+        .btn-b:active { box-shadow: 0 0 0 #f57f17; }
+
+        /* Menus */
+        .menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            pointer-events: auto;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .hidden { display: none !important; }
+
+        h1 {
+            color: #FFAA00;
+            text-shadow: 3px 3px 0 #3E2723;
+            margin-bottom: 20px;
+            font-size: 18px;
+            line-height: 1.5;
+        }
+
+        .btn-menu {
+            background: #7CB342;
+            border: 4px solid #33691E;
+            color: white;
+            padding: 10px 20px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 4px 0 #33691E;
+        }
+        
+        .btn-menu:active { transform: translateY(4px); box-shadow: none; }
+        .btn-girl { background: #EC407A; border-color: #880E4F; box-shadow: 0 4px 0 #880E4F; }
+        .btn-boy { background: #039BE5; border-color: #01579B; box-shadow: 0 4px 0 #01579B; }
+
+        .speaker {
+            display: flex;
+            gap: 5px;
+            position: absolute;
+            bottom: 15px;
+            right: 20px;
+        }
+        .speaker-hole {
+            width: 6px;
+            height: 6px;
+            background: #222;
+            border-radius: 50%;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="console-body">
+    
+    <div id="screen-bezel">
+        <div style="color: #666; font-size: 8px; margin-bottom: 5px; display: flex; justify-content: space-between;">
+            <span>BATTERY <span style="color:red">●</span></span>
+            <span>INFINITE MODE</span>
+            <span id="sound-status">♪ ON</span>
+        </div>
+        
+        <div id="game-container">
+            <canvas id="gameCanvas" width="640" height="360"></canvas>
+            
+            <div id="ui-layer">
+                <div class="hud">
+                    <span id="score-display">PONTOS: 0</span>
+                    <span id="distance-display">DISTÂNCIA: 0m</span>
+                </div>
+            </div>
+
+            <!-- START SCREEN -->
+            <div id="start-screen" class="menu-screen">
+                <h1>BLOCO INFINITO</h1>
+                <p style="font-size: 10px; margin-bottom: 20px; color: #ddd;">CORRA O MÁXIMO QUE PUDER!</p>
+                <div style="display: flex;">
+                    <button class="btn-menu btn-boy" onclick="startGame('boy')">MENINO</button>
+                    <button class="btn-menu btn-girl" onclick="startGame('girl')">MENINA</button>
+                </div>
+                <p style="margin-top: 20px; font-size: 8px; color: #aaa;">CUIDADO COM OS ESPINHOS!</p>
+            </div>
+
+            <!-- GAME OVER SCREEN -->
+            <div id="game-over-screen" class="menu-screen hidden">
+                <h1 style="color: #FF5252;">FIM DE JOGO</h1>
+                <p id="final-score" style="margin-bottom: 10px; font-size: 10px;">Diamantes: 0</p>
+                <p id="final-dist" style="margin-bottom: 20px; font-size: 10px;">Distância: 0m</p>
+                <button class="btn-menu" onclick="resetGame()">TENTAR DE NOVO</button>
+            </div>
+        </div>
+        
+        <div class="speaker">
+            <div class="speaker-hole"></div>
+            <div class="speaker-hole"></div>
+            <div class="speaker-hole"></div>
+            <div class="speaker-hole"></div>
+        </div>
+    </div>
+
+    <!-- Controles -->
+    <div id="controls-area">
+        <div class="btn-pad">
+            <div class="d-pad-btn d-center"></div>
+            <div class="d-pad-btn d-up" id="btn-up"></div> 
+            <div class="d-pad-btn d-left" id="btn-left"></div>
+            <div class="d-pad-btn d-right" id="btn-right"></div>
+            <div class="d-pad-btn d-down" id="btn-down"></div>
+        </div>
+
+        <div class="action-pad">
+            <div class="action-btn btn-b" id="btn-b">B</div>
+            <div class="action-btn" id="btn-a">A</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // --- Áudio ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx;
+    let soundEnabled = true;
+
+    function initAudio() {
+        if (!audioCtx) audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playSound(type) {
+        if (!soundEnabled || !audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'jump') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'coin') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.setValueAtTime(1800, now + 0.1);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            osc.start(now); osc.stop(now + 0.2);
+        } else if (type === 'kill') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.exponentialRampToValueAtTime(10, now + 0.1);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.linearRampToValueAtTime(0.0, now + 0.1);
+            osc.start(now); osc.stop(now + 0.1);
+        }
+    }
+
+    // --- Configs ---
+    const TILE_SIZE = 32;
+    const GRAVITY = 0.5;
+    const JUMP_FORCE = -12.5; 
+    const SPEED = 5; // Um pouco mais rápido no infinito
+    const ROWS = 12; // Altura do mapa em blocos (360px / 30 ~ 12)
+    
+    let gameRunning = false;
+    let score = 0;
+    let distance = 0;
+    let cameraX = 0;
+    
+    const keys = { left: false, right: false, up: false };
+
+    // --- Assets e Desenho ---
+    function drawBlock(x, y, type) {
+        x = Math.floor(x); y = Math.floor(y);
+        
+        switch(type) {
+            case 1: // Grama
+                ctx.fillStyle = '#5D4037'; ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = '#76FF03'; ctx.fillRect(x, y, TILE_SIZE, 8);
+                break;
+            case 2: // Pedra
+                ctx.fillStyle = '#757575'; ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = '#424242'; ctx.lineWidth = 2; ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                break;
+            case 3: // Tijolo/Plataforma
+                ctx.fillStyle = '#FF7043'; ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = '#D84315'; ctx.strokeRect(x+4, y+4, TILE_SIZE-8, TILE_SIZE-8);
+                break;
+            case 4: // ESPINHO (Novo)
+                ctx.fillStyle = '#B0BEC5';
+                ctx.beginPath();
+                ctx.moveTo(x, y + TILE_SIZE);
+                ctx.lineTo(x + TILE_SIZE/2, y);
+                ctx.lineTo(x + TILE_SIZE, y + TILE_SIZE);
+                ctx.fill();
+                // Sangue na ponta (detalhe)
+                ctx.fillStyle = '#F44336';
+                ctx.beginPath();
+                ctx.moveTo(x + TILE_SIZE/2 - 2, y + 4);
+                ctx.lineTo(x + TILE_SIZE/2, y);
+                ctx.lineTo(x + TILE_SIZE/2 + 2, y + 4);
+                ctx.fill();
+                break;
+        }
+    }
+
+    // --- Entidades ---
+    class Player {
+        constructor(charType) {
+            this.x = 100;
+            this.y = 100;
+            this.width = 24;
+            this.height = 30;
+            this.vx = 0;
+            this.vy = 0;
+            this.grounded = false;
+            this.charType = charType;
+            this.animTimer = 0;
+            this.invincible = 0;
+        }
+        update() {
+            if (keys.left) this.vx = -SPEED;
+            else if (keys.right) this.vx = SPEED;
+            else this.vx = 0;
+
+            if (keys.up && this.grounded) {
+                this.vy = JUMP_FORCE;
+                this.grounded = false;
+                playSound('jump');
+            }
+
+            this.vy += GRAVITY;
+            this.x += this.vx;
+            this.checkCollision(true);
+            this.y += this.vy;
+            this.grounded = false;
+            this.checkCollision(false);
+
+            if (this.y > canvas.height + 200) gameOver();
+            this.animTimer++;
+            if (this.invincible > 0) this.invincible--;
+        }
+        checkCollision(horizontal) {
+            const startCol = Math.floor(this.x / TILE_SIZE);
+            const endCol = Math.floor((this.x + this.width) / TILE_SIZE);
+            const startRow = Math.floor(this.y / TILE_SIZE);
+            const endRow = Math.floor((this.y + this.height) / TILE_SIZE);
+
+            for (let c = startCol; c <= endCol; c++) {
+                for (let r = startRow; r <= endRow; r++) {
+                    // Proteção contra undefined no infinito
+                    if (!map[r] || map[r].length <= c) continue;
+                    
+                    const tile = map[r][c];
+                    
+                    if (tile === 4) { // Espinho mata!
+                        // Caixa de colisão do espinho é menor
+                        if (this.x < (c*TILE_SIZE) + 24 && this.x + this.width > (c*TILE_SIZE) + 8 &&
+                            this.y + this.height > (r*TILE_SIZE) + 16) {
+                            gameOver();
+                        }
+                    }
+                    else if (tile === 1 || tile === 2 || tile === 3) {
+                        if (horizontal) {
+                            if (this.vx > 0) this.x = (c * TILE_SIZE) - this.width - 0.1;
+                            if (this.vx < 0) this.x = (c * TILE_SIZE) + TILE_SIZE + 0.1;
+                            this.vx = 0;
+                        } else {
+                            if (this.vy > 0) {
+                                this.y = (r * TILE_SIZE) - this.height - 0.1;
+                                this.grounded = true;
+                                this.vy = 0;
+                            } else if (this.vy < 0) {
+                                this.y = (r * TILE_SIZE) + TILE_SIZE + 0.1;
+                                this.vy = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        draw(ctx, camX) {
+            const dx = Math.floor(this.x - camX);
+            const dy = Math.floor(this.y);
+            const bob = (this.grounded && this.vx !== 0) ? Math.sin(this.animTimer * 0.5) * 2 : 0;
+            
+            // Cores
+            let cSkin = '#FFCC80', cShirt, cPants, cHair;
+            if (this.charType === 'boy') { cShirt = '#00BCD4'; cPants = '#3F51B5'; cHair = '#5D4037'; }
+            else { cShirt = '#F06292'; cPants = '#795548'; cHair = '#FF9800'; }
+
+            ctx.fillStyle = cSkin; ctx.fillRect(dx+4, dy+bob, 16, 14); // Cabeça
+            ctx.fillStyle = cHair; ctx.fillRect(dx+4, dy+bob, 16, 4); // Cabelo Topo
+            if (this.charType === 'boy') ctx.fillRect(dx+4, dy+bob, 4, 8);
+            else { ctx.fillRect(dx+2, dy+bob, 4, 16); ctx.fillRect(dx+18, dy+bob, 4, 16); }
+
+            ctx.fillStyle = cShirt; ctx.fillRect(dx+4, dy+14+bob, 16, 10); // Corpo
+            ctx.fillStyle = cPants; ctx.fillRect(dx+4, dy+24+bob, 16, 6); // Calça
+            
+            // Pernas
+            if (this.grounded && this.vx !== 0 && Math.sin(this.animTimer * 0.3) > 0) {
+                 ctx.fillRect(dx+4, dy+30+bob, 6, 0); ctx.fillRect(dx+14, dy+30+bob, 6, 6); 
+            } else {
+                 ctx.fillRect(dx+4, dy+30+bob, 6, 6); ctx.fillRect(dx+14, dy+30+bob, 6, 6); 
+            }
+            
+            // Olhos
+            ctx.fillStyle = 'white';
+            const eyeOff = (this.vx >= 0) ? 4 : 0;
+            ctx.fillRect(dx+8+eyeOff, dy+4+bob, 4, 4);
+            ctx.fillStyle = 'black'; ctx.fillRect(dx+10+eyeOff, dy+5+bob, 2, 2);
+        }
+    }
+
+    class BaseEnemy {
+        constructor(x, y) {
+            this.x = x; this.y = y;
+            this.w = 24; this.h = 24;
+            this.vx = -1;
+            this.dead = false;
+        }
+        update() { this.x += this.vx; }
+        draw(ctx, camX) {}
+    }
+
+    class Slime extends BaseEnemy {
+        constructor(x, y, type) {
+            super(x, y);
+            this.type = type; // 'green' or 'red'
+            this.h = 18;
+            this.vx = type === 'red' ? -2.5 : -1; // Vermelho é rápido
+            this.startX = x;
+            this.range = 100;
+        }
+        update() {
+            this.x += this.vx;
+            // Patrulha
+            if (Math.abs(this.x - this.startX) > this.range) this.vx *= -1;
+            this.animY = Math.abs(Math.sin(Date.now() / 200)) * 5;
+        }
+        draw(ctx, camX) {
+            const dx = this.x - camX;
+            const dy = this.y - this.animY + 14; 
+            ctx.fillStyle = this.type === 'red' ? 'rgba(255, 50, 50, 0.9)' : 'rgba(100, 221, 23, 0.9)';
+            ctx.fillRect(dx, dy, this.w, this.h);
+            // Olhos
+            ctx.fillStyle = 'black';
+            ctx.fillRect(dx+4, dy+4, 4, 4); ctx.fillRect(dx+16, dy+4, 4, 4);
+            // Expressão brava no vermelho
+            if (this.type === 'red') {
+                ctx.fillStyle = 'white'; ctx.fillRect(dx+4, dy+2, 4, 2); ctx.fillRect(dx+16, dy+2, 4, 2);
+            }
+        }
+    }
+
+    class Bat extends BaseEnemy {
+        constructor(x, y) {
+            super(x, y);
+            this.w = 30; this.h = 16;
+            this.baseY = y;
+            this.timer = Math.random() * 10;
+        }
+        update() {
+            this.timer += 0.05;
+            this.x -= 1.5; // Voa para a esquerda
+            this.y = this.baseY + Math.sin(this.timer) * 30; // Voa em ondas
+        }
+        draw(ctx, camX) {
+            const dx = this.x - camX;
+            ctx.fillStyle = '#424242'; // Corpo cinza escuro
+            ctx.fillRect(dx+10, this.y, 10, 10);
+            // Asas
+            if (Math.sin(this.timer * 5) > 0) {
+                ctx.beginPath(); ctx.moveTo(dx+10, this.y+4); ctx.lineTo(dx, this.y-5); ctx.lineTo(dx+8, this.y+8); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(dx+20, this.y+4); ctx.lineTo(dx+30, this.y-5); ctx.lineTo(dx+22, this.y+8); ctx.fill();
+            } else {
+                ctx.beginPath(); ctx.moveTo(dx+10, this.y+4); ctx.lineTo(dx, this.y+10); ctx.lineTo(dx+8, this.y+8); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(dx+20, this.y+4); ctx.lineTo(dx+30, this.y+10); ctx.lineTo(dx+22, this.y+8); ctx.fill();
+            }
+            ctx.fillStyle = 'red'; ctx.fillRect(dx+12, this.y+2, 2, 2); ctx.fillRect(dx+16, this.y+2, 2, 2);
+        }
+    }
+
+    class Diamond {
+        constructor(x, y) {
+            this.x = x * TILE_SIZE + 8;
+            this.y = y * TILE_SIZE + 8;
+            this.size = 16;
+            this.collected = false;
+            this.timer = Math.random();
+        }
+        draw(ctx, camX) {
+            if (this.collected) return;
+            const float = Math.sin(Date.now() / 300) * 3;
+            const dx = this.x - camX;
+            ctx.fillStyle = '#00E5FF';
+            ctx.beginPath(); ctx.moveTo(dx+8, this.y+float); ctx.lineTo(dx+16, this.y+8+float); ctx.lineTo(dx+8, this.y+16+float); ctx.lineTo(dx, this.y+8+float); ctx.fill();
+            ctx.fillStyle = 'white'; ctx.fillRect(dx+6, this.y+6+float, 4, 4);
+        }
+    }
+
+    // --- Geração Procedural Infinita ---
+    let map = []; // Array 2D: map[row][col]
+    let entities = [];
+    let diamonds = [];
+    let player;
+    let lastGroundY = 8; // Altura do chão atual (em tiles)
+    let nextChunkX = 0; // Onde gerar o próximo pedaço
+
+    function initGame() {
+        map = [];
+        for(let r=0; r<ROWS; r++) map.push([]);
+        entities = [];
+        diamonds = [];
+        score = 0;
+        distance = 0;
+        cameraX = 0;
+        nextChunkX = 0;
+        lastGroundY = 8;
+        
+        // Gera zona inicial segura
+        generateChunk(20, true); 
+        // Gera primeira parte do desafio
+        generateChunk(20, false);
+    }
+
+    function generateChunk(width, safeZone) {
+        for (let c = 0; c < width; c++) {
+            const currentX = nextChunkX + c;
+
+            // Lógica do terreno
+            let groundY = lastGroundY;
+
+            if (!safeZone) {
+                // Mudança de altura (subir ou descer)
+                if (Math.random() < 0.2) {
+                    const change = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
+                    groundY += change;
+                    // Limites de altura
+                    if (groundY < 4) groundY = 4;
+                    if (groundY > 10) groundY = 10;
+                }
+                
+                // Buracos (Gaps)
+                let isGap = false;
+                if (Math.random() < 0.1) {
+                    isGap = true;
+                }
+
+                // Preencher colunas
+                for (let r = 0; r < ROWS; r++) {
+                    let tile = 0;
+                    if (!isGap) {
+                        if (r === groundY) tile = 1; // Grama
+                        else if (r > groundY) tile = 2; // Terra/Pedra
+                    }
+                    map[r].push(tile);
+                }
+
+                // Obstáculos e Inimigos (se não for buraco)
+                if (!isGap) {
+                    // Espinhos
+                    if (Math.random() < 0.15) {
+                        map[groundY-1][map[groundY-1].length-1] = 4;
+                    }
+                    // Plataforma flutuante
+                    else if (Math.random() < 0.3) {
+                        const platY = groundY - 3;
+                        if (platY > 2) map[platY][map[platY].length-1] = 3;
+                        // Diamante na plataforma
+                        if (Math.random() < 0.5) diamonds.push(new Diamond(currentX, platY - 1));
+                    }
+                    // Inimigos
+                    else if (Math.random() < 0.1) {
+                        const type = Math.random() < 0.7 ? 'green' : 'red';
+                        entities.push(new Slime(currentX * TILE_SIZE, (groundY-1) * TILE_SIZE, type));
+                    }
+                    // Morcegos (voam alto)
+                    else if (Math.random() < 0.05) {
+                         entities.push(new Bat(currentX * TILE_SIZE, (groundY-4) * TILE_SIZE));
+                    }
+                    
+                    // Diamantes no chão
+                    if (Math.random() < 0.1) {
+                        diamonds.push(new Diamond(currentX, groundY - 1));
+                    }
+                } else {
+                    // Se for buraco, adiciona vazio no array map
+                    for (let r = 0; r < ROWS; r++) {
+                        // Já foi adicionado 0 no loop acima
+                    }
+                }
+                
+                lastGroundY = groundY;
+
+            } else {
+                // Zona segura (chão reto)
+                for (let r = 0; r < ROWS; r++) {
+                    let tile = 0;
+                    if (r === 9) tile = 1;
+                    else if (r > 9) tile = 2;
+                    map[r].push(tile);
+                }
+                lastGroundY = 9;
+            }
+        }
+        nextChunkX += width;
+    }
+
+    function startGame(charType) {
+        initAudio();
+        player = new Player(charType);
+        initGame();
+        gameRunning = true;
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-over-screen').classList.add('hidden');
+        loop();
+    }
+
+    function resetGame() {
+        document.getElementById('start-screen').classList.remove('hidden');
+        document.getElementById('game-over-screen').classList.add('hidden');
+        gameRunning = false;
+    }
+
+    function gameOver() {
+        gameRunning = false;
+        document.getElementById('final-score').innerText = "Pontos: " + score;
+        document.getElementById('final-dist').innerText = "Distância: " + Math.floor(distance) + "m";
+        document.getElementById('game-over-screen').classList.remove('hidden');
+    }
+
+    function loop() {
+        if (!gameRunning) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 1. Geração Infinita
+        // Se a câmera estiver chegando perto do fim do mapa atual, gera mais
+        const cameraRightEdgeCol = Math.floor((cameraX + canvas.width) / TILE_SIZE);
+        if (cameraRightEdgeCol > nextChunkX - 15) {
+            generateChunk(20, false);
+        }
+
+        // 2. Updates
+        player.update();
+        
+        // Camera segue player, mas não volta pra trás
+        if (player.x > cameraX + 200) {
+            cameraX = player.x - 200;
+        }
+        distance = player.x / 10;
+        document.getElementById('distance-display').innerText = "DIST: " + Math.floor(distance) + "m";
+
+        // Diamantes
+        diamonds.forEach(d => {
+            if (d.collected) return;
+            // Otimização: só desenha/checa se estiver na tela
+            if (d.x > cameraX - 50 && d.x < cameraX + canvas.width + 50) {
+                if (player.x < d.x + 16 && player.x + player.width > d.x &&
+                    player.y < d.y + 16 && player.y + player.height > d.y) {
+                    d.collected = true;
+                    score += 10;
+                    playSound('coin');
+                    document.getElementById('score-display').innerText = "PONTOS: " + score;
+                }
+                d.draw(ctx, cameraX);
+            }
+        });
+
+        // Inimigos
+        entities.forEach(e => {
+            if (e.dead) return;
+            // Otimização: Update apenas se perto
+            if (e.x > cameraX - 100 && e.x < cameraX + canvas.width + 100) {
+                e.update();
+                
+                // Colisão
+                if (player.x < e.x + e.w && player.x + player.width > e.x &&
+                    player.y < e.y + e.h && player.y + player.height > e.y) {
+                    
+                    // Pular em cima mata (exceto espinhos e morcegos as vezes)
+                    if (player.vy > 0 && player.y + player.height < e.y + e.h/2) {
+                        e.dead = true;
+                        player.vy = -6;
+                        score += 50;
+                        playSound('kill');
+                    } else {
+                        gameOver();
+                    }
+                }
+                e.draw(ctx, cameraX);
+            }
+        });
+
+        // Desenhar Mapa (Renderização Otimizada)
+        const startCol = Math.floor(cameraX / TILE_SIZE);
+        const endCol = startCol + (canvas.width / TILE_SIZE) + 2;
+
+        for (let c = startCol; c <= endCol; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                if (map[r] && map[r][c]) {
+                    drawBlock(c * TILE_SIZE - cameraX, r * TILE_SIZE, map[r][c]);
+                }
+            }
+        }
+
+        player.draw(ctx, cameraX);
+        requestAnimationFrame(loop);
+    }
+
+    // --- Inputs ---
+    window.addEventListener('keydown', e => {
+        if (e.code === 'ArrowLeft') keys.left = true;
+        if (e.code === 'ArrowRight') keys.right = true;
+        if (e.code === 'ArrowUp' || e.code === 'Space') keys.up = true;
+    });
+    window.addEventListener('keyup', e => {
+        if (e.code === 'ArrowLeft') keys.left = false;
+        if (e.code === 'ArrowRight') keys.right = false;
+        if (e.code === 'ArrowUp' || e.code === 'Space') keys.up = false;
+    });
+
+    const attachButton = (id, key) => {
+        const btn = document.getElementById(id);
+        const start = (e) => { e.preventDefault(); keys[key] = true; btn.style.transform = 'translateY(2px)'; };
+        const end = (e) => { e.preventDefault(); keys[key] = false; btn.style.transform = 'translateY(0px)'; };
+        btn.addEventListener('touchstart', start); btn.addEventListener('touchend', end);
+        btn.addEventListener('mousedown', start); btn.addEventListener('mouseup', end);
+    };
+    attachButton('btn-left', 'left'); attachButton('btn-right', 'right');
+    attachButton('btn-up', 'up'); attachButton('btn-a', 'up');
+
+</script>
+</body>
+</html>
